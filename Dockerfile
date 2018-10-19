@@ -1,15 +1,18 @@
-FROM nginx:1.13
+FROM nginx:1.15
 MAINTAINER NGINX Amplify Engineering
 
-# Install the NGINX Amplify Agent
+# Install the NGINX Amplify Agent and letsencrypt
 RUN apt-get update \
-    && apt-get install -qqy curl python apt-transport-https apt-utils gnupg1 procps \
+    && apt-get install -qqy curl python apt-transport-https apt-utils gnupg1 procps letsencrypt python-pip \
     && echo 'deb https://packages.amplify.nginx.com/debian/ stretch amplify-agent' > /etc/apt/sources.list.d/nginx-amplify.list \
     && curl -fs https://nginx.org/keys/nginx_signing.key | apt-key add - > /dev/null 2>&1 \
     && apt-get update \
     && apt-get install -qqy nginx-amplify-agent \
     && apt-get purge -qqy curl apt-transport-https apt-utils gnupg1 \
     && rm -rf /var/lib/apt/lists/*
+
+# Install certbot cloudflare plugin
+RUN pip install certbot-dns-cloudflare
 
 # Keep the nginx logs inside the container
 RUN unlink /var/log/nginx/access.log \
@@ -43,6 +46,14 @@ COPY ./conf.d/stub_status.conf /etc/nginx/conf.d
 # The /entrypoint.sh script will launch nginx and the Amplify Agent.
 # The script honors API_KEY and AMPLIFY_IMAGENAME environment
 # variables, and updates /etc/amplify-agent/agent.conf accordingly.
+
+#ENV Variables for cloudflare DNS Checks wildcard certs
+ENV CLOUDFLARE_EMAIL ""
+ENV CLOUDFLARE_API_KEY ""
+
+# Variables for Letsencrypt
+ENV LETSENCRYPT_WILDCARD_DOMAIN = ""
+ENV LETSENCRYPT_EMAIL ""
 
 COPY ./entrypoint.sh /entrypoint.sh
 

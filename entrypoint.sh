@@ -19,6 +19,32 @@ agent_log_file="/var/log/amplify-agent/agent.log"
 nginx_status_conf="/etc/nginx/conf.d/stub_status.conf"
 api_key=""
 amplify_imagename=""
+cloudflare_ini="/etc/nginx/conf.d/cloudflare.ini"
+cloudflare_email=""
+cloudflare_api_key=""
+
+
+# cloudflare ini
+echo "checking cloudflare config ..."
+test -n "${CLOUDFLARE_EMAIL}" && \
+    cloudflare_email=${CLOUDFLARE_EMAIL}
+
+test -n "${CLOUDFLARE_API_KEY}" && \
+    cloudflare_api_key=${CLOUDFLARE_API_KEY}
+
+if [ -n "${cloudflare_email}" -o -n "${cloudflare_api_key}" ]; then
+	echo "cloudflare variables provided, setting ..."
+	touch ${cloudflare_ini}
+	echo "dns_cloudflare_email = ${cloudflare_email}" > ${cloudflare_ini}
+	echo "dns_cloudflare_api_key = ${cloudflare_api_key}" >> ${cloudflare_ini}
+	chmod 0400 ${cloudflare_ini}
+fi
+
+# certbot create account
+certbot register -m ${LETSENCRYPT_EMAIL} --agree-tos --non-interactive
+
+# certbot create wildcard cert
+certbot certonly --dns-cloudflare --dns-cloudflare-credentials ${cloudflare_ini} -d "*.${LETSENCRYPT_WILDCARD_DOMAIN}" -m ${LETSENCRYPT_EMAIL}
 
 # Launch nginx
 echo "starting nginx ..."
